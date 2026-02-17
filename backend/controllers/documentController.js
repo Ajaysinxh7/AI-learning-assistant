@@ -1,3 +1,4 @@
+import { error } from 'console';
 import Document  from '../models/Document.js';
 import Flashcard from '../models/Flashcard.js'
 import Quiz from '../models/Quiz.js'
@@ -40,7 +41,7 @@ export const uploadDocument =async(req,res,next)=>{
         const document= await Document.create({
             userId:req.user._id,
             title,
-            fileName:req.file.orginalname,
+            fileName:req.file.originalname,
             filePath:fileURL,// store the URL instead of local path
             fileSize:req.file.size,
             status:'processing',
@@ -150,7 +151,42 @@ export const getDocuments= async(req,res,next) =>{
 // @access Private
 export const getDocument= async(req,res,next) =>{
     try{
+        const document=await Document.findOne({
+            _id:req.params.id,
+            userId:req.user._id,
+        });
 
+        if(!document){
+            return res.status(404).json({
+                success:false,
+                error:"Document not found.",
+                statusCode:404
+            });
+        }
+
+        // Get counts of associated flashcards and quizzes
+        const flashcardCount=await Flashcard.countDocument({
+            documentId:document._id,
+            userId:req.user._id,
+        });
+        const quizCount=await Quiz.countDocument({
+            documentId:document._id,
+            userId:req.user._id,
+        });
+
+        // Update last accessed
+        document.lastAccessed=Date.now();
+        await document.save();
+
+        // Combine document data with counts
+        const documentData=document.toObject();
+        documentData.flashcardCount=flashcardCount;
+        documentData.quizCount=quizCount;
+
+        res.status(200).json({
+            success:true,
+            data:documentData,
+        });
     }catch(error){
         next(error);
     }
@@ -161,21 +197,41 @@ export const getDocument= async(req,res,next) =>{
 // @access Private
 export const deleteDocument= async(req,res,next) =>{
     try{
+        const document=await Document.findOne({
+            _id:req.params.id,
+            userId:req.user._id,
+        });
+        
+        if(!document){
+            return res.status(404).json({
+                success:false,
+                error:"Document not found.",
+                statusCode:404
+            });
+        }
 
+        // Delete a file from a filesystem
+        await fs.unlink(document.filePath).catch(()=>{});
+        // Delete document
+        await document.deleteOne();
+        res.status(202).json({
+            success:true,
+            message:"Document Deleted successfully!",
+        });
     }catch(error){
 
         next(error);
     }
 };
 
-// @desc Update document title
-// @route PUT /api/documents/:id
-// @access Private
-export const updateDocument= async(req,res,next) =>{
-    try{
+//@desc Update document title
+//@route PUT /api/documents/:id
+//@access Private
+// export const updateDocument= async(req,res,next) =>{
+//     try{
 
-    }catch(error){
+//     }catch(error){
 
-        next(error);
-    }
-};
+//         next(error);
+//     }
+// };
