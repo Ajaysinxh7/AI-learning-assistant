@@ -196,7 +196,7 @@ export const chat=async(req,res,next)=>{
             });
         }
 
-        // find relevent chunks
+        // find relevant chunks
         const relevantChunks = findRelevantChunks(document.chunks,question,3);
         const chunkIndices=relevantChunks.map(c => c.chunkIndex);
 
